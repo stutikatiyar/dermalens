@@ -16,4 +16,10 @@ def detect_blur(image):
 
 # 🔥 NEW: quality score
 def quality_score(sharpness, contrast):
-    return float((0.7 * sharpness) + (0.3 * contrast))
+    # normalize values into reasonable range
+    sharp_norm = min(sharpness / 500, 1.0)
+    contrast_norm = min(contrast / 100, 1.0)
+
+    score = (0.7 * sharp_norm) + (0.3 * contrast_norm)
+
+    return float(score * 100)  # scale to 0–100

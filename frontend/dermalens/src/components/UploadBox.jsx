@@ -7,6 +7,7 @@ function UploadBox() {
   const [loading, setLoading] = useState(false);
   const [metrics, setMetrics] = useState(null);
   const [mode, setMode] = useState(null);
+  const [insights, setInsights] = useState(null);
 
   const handleChange = async (e) => {
     const file = e.target.files[0];
@@ -15,6 +16,7 @@ function UploadBox() {
     // reset old state (important)
     setMetrics(null);
     setMode(null);
+    setInsights(null);
 
     setImage(URL.createObjectURL(file));
 
@@ -31,6 +33,10 @@ function UploadBox() {
       if (response.metrics) {
         setMetrics(response.metrics);
       }
+
+      if (response.interpretation) {
+        setInsights(response.interpretation);
+}
 
       // mode
       if (response.mode) {
@@ -101,6 +107,9 @@ function UploadBox() {
           <p>
             Contrast: {metrics.contrast_before.toFixed(2)} → {metrics.contrast_after.toFixed(2)}
           </p>
+          <p className="mt-2 font-semibold text-black">
+             Quality Score: {metrics.quality_before.toFixed(2)} → {metrics.quality_after.toFixed(2)}
+          </p>
         </div>
       )}
 
@@ -109,6 +118,13 @@ function UploadBox() {
         <p className="mt-2 text-sm text-green-600 text-center">
           Mode: {mode}
         </p>
+      )}
+      {insights && (
+        <div className="mt-4 text-sm text-gray-700 text-center space-y-1">
+    {insights.map((item, index) => (
+      <p key={index}>✔ {item}</p>
+    ))}
+      </div>
       )}
 
     </div>
