@@ -16,21 +16,18 @@ transform = transforms.Compose([
     )
 ])
 
+
 def load_model(weights_path):
-    import torch
     from torchvision import models
+    import torch
 
     model = models.resnet18(weights=None)
 
-    try:
-        state_dict = torch.load(
-            weights_path,
-            map_location="cpu",
-            weights_only=False   # 🔴 THIS is the fix
-        )
-        model.load_state_dict(state_dict)
-    except Exception as e:
-        print("⚠ Warning loading weights:", e)
+    # 🔴 CRITICAL FIX: set correct output layer BEFORE loading
+    model.fc = torch.nn.Linear(model.fc.in_features, 7)
+
+    state = torch.load(weights_path, map_location="cpu")
+    model.load_state_dict(state)
 
     model.eval()
     return model

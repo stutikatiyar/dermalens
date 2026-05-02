@@ -1,68 +1,47 @@
 import cv2
 import numpy as np
 
+def fix_brightness_lab(img, gamma=0.85):
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+
+    l_norm = l / 255.0
+    l_gamma = np.power(l_norm, gamma)
+    l_out = np.clip(l_gamma * 255, 0, 255).astype(np.uint8)
+
+    lab = cv2.merge((l_out, a, b))
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
 def detect_blur(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return float(cv2.Laplacian(gray, cv2.CV_64F).var())
 
+
 def enhance_image(image_bytes):
-    # decode
     np_arr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
     original = img.copy()
 
-    # analyze
     sharpness = detect_blur(img)
+    brightness = np.mean(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
 
-    # decide + enhance
-    if sharpness < 80:
-        # -------- STRONG --------
-        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
+    print("DEBUG → brightness:", brightness)
+    print("DEBUG → sharpness:", sharpness)
 
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        l = clahe.apply(l)
 
-        lab = cv2.merge((l, a, b))
-        enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    enhanced = img.copy()
+    mode = "No Enhancement"
 
-        blur = cv2.GaussianBlur(enhanced, (0, 0), 1.2)
-        enhanced = cv2.addWeighted(enhanced, 1.4, blur, -0.4, 0)
+    # 🟡 Case 1: VERY dark → gentle brightness fix
+    if brightness < 50:
+        enhanced = fix_brightness_lab(img, gamma=0.9)
+        mode = "Mild Brightness Fix"
 
-        mode = "Strong Enhancement"
+    # 🟡 Case 2: VERY blurry → light sharpening
+    elif sharpness < 70:
+        blur = cv2.GaussianBlur(img, (0, 0), 0.8)
+        enhanced = cv2.addWeighted(img, 1.05, blur, -0.05, 0)
+        mode = "Light Sharpen"
 
-    elif sharpness < 200:
-        # -------- MODERATE --------
-        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
-
-        clahe = cv2.createCLAHE(clipLimit=1.6, tileGridSize=(8, 8))
-        l = clahe.apply(l)
-
-        lab = cv2.merge((l, a, b))
-        enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
-        blur = cv2.GaussianBlur(enhanced, (0, 0), 1.0)
-        enhanced = cv2.addWeighted(enhanced, 1.3, blur, -0.3, 0)
-
-        mode = "Moderate Enhancement"
-
-    else:
-        # -------- MINIMAL --------
-        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
-
-        clahe = cv2.createCLAHE(clipLimit=1.2, tileGridSize=(8, 8))
-        l = clahe.apply(l)
-
-        lab = cv2.merge((l, a, b))
-        enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
-        blur = cv2.GaussianBlur(enhanced, (0, 0), 0.6)
-        enhanced = cv2.addWeighted(enhanced, 1.1, blur, -0.1, 0)
-
-        mode = "Minimal Enhancement"
-
-    # ALWAYS return at the end
     return original, enhanced, mode

@@ -1,19 +1,37 @@
-# node
-node_modules/
-dist/
-
-# python
+# ======================
+# Python
+# ======================
 venv/
 __pycache__/
 *.pyc
 
-# env files
+# ======================
+# Node
+# ======================
+node_modules/
+dist/
+
+# ======================
+# Environment files
+# ======================
 .env
 
-# system
+# ======================
+# Data & Models (IMPORTANT)
+# ======================
+backend/data/
+backend/app/ml/models/
+*.pth
+
+# ======================
+# Images (optional, keep repo light)
+# ======================
+*.jpg
+*.jpeg
+*.png
+
+# ======================
+# OS files
+# ======================
 .DS_Store
 Thumbs.db
-
-*.pth
-data/
-sample.jpg
