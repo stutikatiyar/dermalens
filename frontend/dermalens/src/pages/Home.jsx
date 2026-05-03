@@ -24,9 +24,9 @@ function Home() {
         </p>
 
         {/* Button */}
-        <UploadBox className="mt-10 px-6 py-3 border border-gray-300 rounded-md hover:bg-black hover:text-white transition">
-  Upload Image
-</UploadBox>
+        <div className="mt-10">
+  <UploadBox />
+</div>
 
       </div>
 

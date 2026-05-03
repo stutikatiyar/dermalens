@@ -51,7 +51,9 @@ function UploadBox() {
   };
 
   return (
-    <div className="mt-12 flex flex-col items-center">
+  <div className="bg-[#1e293b] rounded-2xl shadow-2xl p-6 w-full max-w-4xl mx-auto space-y-6">
+    
+    <div className="bg-[#1e293b] rounded-2xl shadow-2xl p-6 w-full max-w-5xl space-y-6">
 
       <input
         type="file"
@@ -63,34 +65,26 @@ function UploadBox() {
 
       <label
         htmlFor="upload"
-        className="px-6 py-3 border border-gray-300 rounded-md text-sm font-medium cursor-pointer hover:bg-black hover:text-white transition-all duration-200"
+        className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg text-white font-medium cursor-pointer transition-all"
       >
         {loading ? "Processing..." : "Upload Image"}
       </label>
 
       {image && enhanced && (
-        <div className="mt-12 w-full max-w-4xl bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <div className="mt-6 w-full bg-[#020617] border border-gray-700 rounded-xl p-6 shadow-sm">
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             {/* Original */}
             <div className="flex flex-col items-center">
-              <p className="text-sm text-gray-500 mb-3">Original</p>
-              <img
-                src={image}
-                alt="original"
-                className="w-full rounded-lg border border-gray-200"
-              />
+              <p className="text-sm text-gray-400 mb-3">Original</p>
+              <img src={image} alt="original" className="w-full rounded-lg border border-gray-700" />
             </div>
 
             {/* Enhanced */}
             <div className="flex flex-col items-center">
-              <p className="text-sm text-gray-500 mb-3">Enhanced</p>
-              <img
-                src={enhanced}
-                alt="enhanced"
-                className="w-full rounded-lg border border-gray-200"
-              />
+              <p className="text-sm text-blue-400 mb-3">Enhanced</p>
+              <img src={enhanced} alt="enhanced" className="w-full rounded-lg border border-blue-500" />
             </div>
 
           </div>
@@ -100,35 +94,40 @@ function UploadBox() {
 
       {/* Metrics */}
       {metrics && metrics.sharpness_before && (
-        <div className="mt-6 text-sm text-gray-600 text-center">
+        <div className="text-sm text-gray-300 text-center">
           <p>
             Sharpness: {metrics.sharpness_before.toFixed(2)} → {metrics.sharpness_after.toFixed(2)}
           </p>
           <p>
             Contrast: {metrics.contrast_before.toFixed(2)} → {metrics.contrast_after.toFixed(2)}
           </p>
-          <p className="mt-2 font-semibold text-black">
-             Quality Score: {metrics.quality_before.toFixed(2)} → {metrics.quality_after.toFixed(2)}
+          <p className="mt-2 font-semibold text-white">
+            Quality Score: {metrics.quality_before.toFixed(2)} → {metrics.quality_after.toFixed(2)}
           </p>
         </div>
       )}
 
       {/* Mode */}
       {mode && (
-        <p className="mt-2 text-sm text-green-600 text-center">
+        <p className="text-sm text-green-400 text-center">
           Mode: {mode}
         </p>
       )}
+
+      {/* Insights */}
       {insights && (
-        <div className="mt-4 text-sm text-gray-700 text-center space-y-1">
-    {insights.map((item, index) => (
-      <p key={index}>✔ {item}</p>
-    ))}
-      </div>
+        <div className="text-sm text-gray-300 text-center space-y-1">
+          {insights.map((item, index) => (
+            <p key={index}>✔ {item}</p>
+          ))}
+        </div>
       )}
 
     </div>
-  );
+
+  </div>
+);
+
 }
 
 export default UploadBox;
