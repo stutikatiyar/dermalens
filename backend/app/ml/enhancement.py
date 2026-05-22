@@ -39,9 +39,16 @@ def enhance_image(image_bytes):
         mode = "Mild Brightness Fix"
 
     # 🟡 Case 2: VERY blurry → light sharpening
-    elif sharpness < 70:
-        blur = cv2.GaussianBlur(img, (0, 0), 0.8)
-        enhanced = cv2.addWeighted(img, 1.05, blur, -0.05, 0)
-        mode = "Light Sharpen"
+    
+    elif sharpness < 25:
+        blur = cv2.GaussianBlur(img, (0, 0), 1.0)
 
-    return original, enhanced, mode
+        enhanced = cv2.addWeighted(
+         img,
+            1.15,
+            blur,
+            -0.15,
+         0
+    )
+
+    mode = "Light Sharpen"
