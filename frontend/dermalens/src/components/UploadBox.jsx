@@ -51,42 +51,72 @@ function UploadBox() {
   };
 
   return (
-  <div className="bg-[#1e293b] rounded-2xl shadow-2xl p-6 w-full max-w-4xl mx-auto space-y-6">
-    
-    <div className="bg-[#1e293b] rounded-2xl shadow-2xl p-6 w-full max-w-5xl space-y-6">
+  <div className="w-full max-w-6xl mx-auto px-6 py-10">
 
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleChange}
-        className="hidden"
-        id="upload"
-      />
+    <div className="bg-[#0f172a]/80 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 space-y-8">
 
-      <label
-        htmlFor="upload"
-        className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg text-white font-medium cursor-pointer transition-all"
-      >
-        {loading ? "Processing..." : "Upload Image"}
-      </label>
+      {/* Header */}
+      <div className="text-center space-y-3">
+        <h1 className="text-4xl font-bold text-white tracking-tight">
+          DermaLens
+        </h1>
 
+        <p className="text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          AI-aware image preprocessing and confidence validation framework
+          for analyzing low-quality image enhancement reliability.
+        </p>
+      </div>
+
+      {/* Upload */}
+      <div className="flex justify-center">
+
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleChange}
+          className="hidden"
+          id="upload"
+        />
+
+        <label
+          htmlFor="upload"
+          className="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 transition-all text-white font-medium cursor-pointer shadow-lg shadow-blue-500/20"
+        >
+          {loading ? "Processing..." : "Upload Image"}
+        </label>
+
+      </div>
+
+      {/* Images */}
       {image && enhanced && (
-        <div className="mt-6 w-full bg-[#020617] border border-gray-700 rounded-xl p-6 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <p className="text-sm text-slate-400 font-medium">
+              Original Image
+            </p>
 
-            {/* Original */}
-            <div className="flex flex-col items-center">
-              <p className="text-sm text-gray-400 mb-3">Original</p>
-              <img src={image} alt="original" className="w-full rounded-lg border border-gray-700" />
+            <div className="bg-[#020617] border border-white/10 rounded-2xl overflow-hidden">
+              <img
+                src={image}
+                alt="original"
+                className="w-full object-cover"
+              />
             </div>
+          </div>
 
-            {/* Enhanced */}
-            <div className="flex flex-col items-center">
-              <p className="text-sm text-blue-400 mb-3">Enhanced</p>
-              <img src={enhanced} alt="enhanced" className="w-full rounded-lg border border-blue-500" />
+          <div className="space-y-3">
+            <p className="text-sm text-blue-400 font-medium">
+              Enhanced Image
+            </p>
+
+            <div className="bg-[#020617] border border-blue-500/30 rounded-2xl overflow-hidden shadow-lg shadow-blue-500/10">
+              <img
+                src={enhanced}
+                alt="enhanced"
+                className="w-full object-cover"
+              />
             </div>
-
           </div>
 
         </div>
@@ -94,40 +124,77 @@ function UploadBox() {
 
       {/* Metrics */}
       {metrics && metrics.sharpness_before && (
-        <div className="text-sm text-gray-300 text-center">
-          <p>
-            Sharpness: {metrics.sharpness_before.toFixed(2)} → {metrics.sharpness_after.toFixed(2)}
-          </p>
-          <p>
-            Contrast: {metrics.contrast_before.toFixed(2)} → {metrics.contrast_after.toFixed(2)}
-          </p>
-          <p className="mt-2 font-semibold text-white">
-            Quality Score: {metrics.quality_before.toFixed(2)} → {metrics.quality_after.toFixed(2)}
-          </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+          <div className="bg-[#020617] border border-white/10 rounded-2xl p-5 text-center">
+            <p className="text-slate-400 text-sm mb-2">Sharpness</p>
+
+            <h2 className="text-white text-xl font-bold">
+              {metrics.sharpness_before.toFixed(2)}
+              <span className="text-blue-400 mx-2">→</span>
+              {metrics.sharpness_after.toFixed(2)}
+            </h2>
+          </div>
+
+          <div className="bg-[#020617] border border-white/10 rounded-2xl p-5 text-center">
+            <p className="text-slate-400 text-sm mb-2">Contrast</p>
+
+            <h2 className="text-white text-xl font-bold">
+              {metrics.contrast_before.toFixed(2)}
+              <span className="text-blue-400 mx-2">→</span>
+              {metrics.contrast_after.toFixed(2)}
+            </h2>
+          </div>
+
+          <div className="bg-[#020617] border border-blue-500/20 rounded-2xl p-5 text-center">
+            <p className="text-slate-400 text-sm mb-2">Quality Score</p>
+
+            <h2 className="text-blue-400 text-xl font-bold">
+              {metrics.quality_before.toFixed(2)}
+              <span className="mx-2">→</span>
+              {metrics.quality_after.toFixed(2)}
+            </h2>
+          </div>
+
         </div>
       )}
 
       {/* Mode */}
       {mode && (
-        <p className="text-sm text-green-400 text-center">
-          Mode: {mode}
-        </p>
+        <div className="flex justify-center">
+          <div className="px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium">
+            Mode: {mode}
+          </div>
+        </div>
       )}
 
       {/* Insights */}
       {insights && (
-        <div className="text-sm text-gray-300 text-center space-y-1">
-          {insights.map((item, index) => (
-            <p key={index}>✔ {item}</p>
-          ))}
+        <div className="bg-[#020617] border border-white/10 rounded-2xl p-6">
+
+          <h3 className="text-white font-semibold mb-4">
+            AI Insights
+          </h3>
+
+          <div className="space-y-3">
+            {insights.map((item, index) => (
+              <p
+                key={index}
+                className="text-slate-300 flex items-center gap-2"
+              >
+                <span className="text-blue-400">●</span>
+                {item}
+              </p>
+            ))}
+          </div>
+
         </div>
       )}
 
     </div>
 
   </div>
-);
-
+  );
 }
 
 export default UploadBox;
