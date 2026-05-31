@@ -6,31 +6,49 @@ from app.ml.enhancement import enhance_image
 from app.ml.metrics import calculate_sharpness, calculate_contrast
 from app.ml.metrics import quality_score
 
-def generate_interpretation(q_before, q_after, mode):
-    improvement = q_after - q_before
+def generate_interpretation(
+    sharpness_before,
+    sharpness_after,
+    quality_before,
+    quality_after,
+    mode
+):
 
     insights = []
 
-    if improvement > 40:
-        insights.append("Significant clarity improvement detected")
-    elif improvement > 20:
-        insights.append("Moderate improvement in image quality")
-    else:
-        insights.append("Minor enhancement applied")
+    # Blur severity analysis
+    if sharpness_before < 10:
 
-    if mode == "Strong Enhancement":
-        insights.append("Image was initially blurry or low quality")
-    elif mode == "Moderate Enhancement":
-        insights.append("Image had moderate quality issues")
-    else:
-        insights.append("Image was already fairly clear")
+        insights.append("Severe blur detected")
+        insights.append("Sharpening enhancement applied")
+        insights.append(
+            "Image quality improved but may still limit reliable diagnosis"
+        )
 
-    if q_after > 75:
+    elif sharpness_before < 40:
+
+        insights.append("Moderate blur detected")
+        insights.append("Enhancement applied")
+        insights.append("Image clarity partially improved")
+
+    else:
+
+        insights.append("Image already relatively clear")
+        insights.append("Minimal enhancement required")
+        insights.append("Quality preserved")
+
+    # AI reliability assessment
+    if quality_after > 75:
+
         insights.append("Suitable for AI-based analysis")
-    elif q_after > 50:
+
+    elif quality_after > 40:
+
         insights.append("Acceptable for analysis with caution")
+
     else:
-        insights.append("May still be insufficient for reliable analysis")
+
+        insights.append("Still insufficient for reliable AI analysis")
 
     return insights
 router = APIRouter()
@@ -52,7 +70,14 @@ async def upload_image(file: UploadFile = File(...)):
     quality_before = quality_score(sharp_before, contrast_before)
     quality_after = quality_score(sharp_after, contrast_after)
 
-    interpretation = generate_interpretation(quality_before, quality_after, mode)
+    
+    interpretation = generate_interpretation(
+    sharp_before,
+    sharp_after,
+    quality_before,
+    quality_after,
+    mode
+)
 
     # encode enhanced image
     _, buffer = cv2.imencode(".jpg", enhanced)
