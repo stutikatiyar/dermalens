@@ -1,204 +1,273 @@
 # DermaLens 🧠🩺
 
-Domain-aware dermatology image enhancement system with model-based validation.
+<p align="center">
+  <b>Domain-Aware Dermatology Image Enhancement & Validation Framework</b>
+</p>
+
+<p align="center">
+  Selective preprocessing • AI confidence validation • Dermatology-focused image enhancement
+</p>
 
 ---
 
-## Overview
+## ✨ Overview
 
-DermaLens is not just an image enhancement tool—it is a validation-aware preprocessing system for dermatology AI.
+DermaLens is a **domain-aware dermatology image enhancement and validation framework** designed to improve image quality **without compromising downstream AI reliability**.
 
-Instead of blindly improving image quality, DermaLens applies **minimal, selective enhancement** and verifies whether the enhancement actually improves AI model confidence.
+Unlike traditional preprocessing pipelines that blindly enhance every image, DermaLens applies **selective enhancement only when necessary** and validates whether the enhancement actually improves model confidence.
 
-This prevents distortion of medically important features and ensures that enhancement does not harm downstream predictions.
+The system combines:
+
+* 🔍 OpenCV-based image quality analysis
+* 🤖 ResNet18-based confidence evaluation
+* 📊 Validation-aware preprocessing logic
+
+to study the relationship between **perceptual image enhancement** and **AI prediction reliability** in dermatology workflows.
 
 ---
 
-## Problem
+# 🚨 Problem
 
-In real-world telemedicine scenarios, dermatology images are often:
+Dermatology images captured in real-world telemedicine environments are often:
 
 * blurry
-* poorly lit
+* poorly illuminated
 * noisy
 
-Traditional pipelines apply enhancement blindly, which can:
+Conventional enhancement pipelines apply aggressive preprocessing without validating whether the enhancement improves downstream AI performance.
+
+This can:
 
 * distort lesion textures
-* alter color distribution
+* alter color distributions
 * reduce model reliability
 
 ---
 
-## Solution
+# ✅ Solution
 
-DermaLens introduces a **selective enhancement + validation pipeline**:
+DermaLens introduces a **validation-aware preprocessing pipeline** that:
 
-* Detect image quality (blur, brightness)
-* Apply minimal correction only when necessary
-* Evaluate impact using a trained dermatology model
-* Compare confidence before and after enhancement
+* analyzes image quality before enhancement
+* applies minimal corrective enhancement only when required
+* evaluates enhancement impact using a dermatology classifier
+* compares model confidence before and after preprocessing
 
----
-
-## Pipeline
-
-Image
-↓
-Quality Analysis (Sharpness, Brightness)
-↓
-Selective Enhancement (if needed)
-↓
-Dermatology Classifier (ResNet18)
-↓
-Confidence Comparison (Before vs After)
+This ensures that enhancement improves **measurable AI reliability**, not just visual appearance.
 
 ---
 
-## How It Works
+# ⚙️ Pipeline
 
-1. User uploads a skin image
-2. System computes:
-
-   * sharpness (blur detection)
-   * brightness level
-3. Based on conditions:
-
-   * applies mild brightness correction OR
-   * applies light sharpening OR
-   * skips enhancement
-4. Runs ML model on:
-
-   * original image
-   * enhanced image
-5. Compares confidence scores
-6. Outputs:
-
-   * enhanced image
-   * metrics
-   * improvement / degradation status
+```text
+Input Image
+      ↓
+Quality Analysis
+(Sharpness • Brightness)
+      ↓
+Selective Enhancement
+(if required)
+      ↓
+Dermatology Classifier
+(ResNet18)
+      ↓
+Confidence Comparison
+(Before vs After)
+```
 
 ---
 
-## Key Insight
+# 🧪 How It Works
 
-> Image enhancement does not always improve AI performance.
+### 1️⃣ User Upload
 
-DermaLens demonstrates that:
+User uploads a dermatology image.
 
-* aggressive enhancement can degrade model confidence
-* preserving original data distribution is critical
-* enhancement should be **selective and validated**, not blind
+### 2️⃣ Quality Analysis
+
+The system computes:
+
+* sharpness (blur detection)
+* brightness level
+* contrast metrics
+
+### 3️⃣ Adaptive Enhancement
+
+Based on image quality:
+
+* mild brightness correction OR
+* light sharpening OR
+* no enhancement
+
+is selectively applied.
+
+### 4️⃣ Model Evaluation
+
+The system runs the dermatology classifier on:
+
+* original image
+* enhanced image
+
+### 5️⃣ Confidence Validation
+
+Confidence scores are compared to evaluate whether enhancement improved AI reliability.
+
+### 6️⃣ Output
+
+The frontend displays:
+
+* enhanced image
+* quality metrics
+* enhancement mode
+* confidence impact assessment
 
 ---
 
-## Features
+# 🧠 Key Insight
+
+Higher image sharpness or visual quality does **not necessarily improve downstream AI performance**.
+
+DermaLens demonstrates that aggressive enhancement can artificially inflate quality metrics while degrading clinically relevant information and reducing model confidence.
+
+The framework therefore treats preprocessing as a **validated decision process** rather than a purely visual enhancement step.
+
+---
+
+# 🚀 Features
 
 * 📸 Image upload and preview
-* 🔍 Selective enhancement (not over-processing)
-* 📊 Quality metrics:
+* 🔍 Selective enhancement (non-destructive)
+* 📊 Quality metrics
 
   * Sharpness
   * Contrast
+  * Brightness
 * 🧠 Blur & brightness-based decision logic
-* 🤖 Model-based validation (confidence comparison)
+* 🤖 Model-based confidence validation
 * ⚡ FastAPI backend
 * 🎨 React + Vite frontend
+* 🧪 Real-time preprocessing evaluation
 
 ---
 
-## Tech Stack
+# 🛠️ Tech Stack
 
-* Frontend: React, Vite, Tailwind CSS
-* Backend: FastAPI (Python)
-* Image Processing: OpenCV
-* Machine Learning: PyTorch (ResNet18)
-* Communication: Axios
+| Layer            | Technologies              |
+| ---------------- | ------------------------- |
+| Frontend         | React, Vite, Tailwind CSS |
+| Backend          | FastAPI (Python)          |
+| Image Processing | OpenCV                    |
+| Machine Learning | PyTorch, ResNet18         |
+| Communication    | Axios                     |
 
 ---
 
-## Project Structure
+# 📂 Project Structure
 
+```text
 backend/
-app/
-ml/
-enhancement.py
-evaluate_derm.py
-train_derm.py
-derm_model.py
-
+│
+├── app/
+│   ├── ml/
+│   │   ├── enhancement.py
+│   │   ├── quality_analyzer.py
+│   │   ├── evaluate_derm.py
+│   │   ├── train_derm.py
+│   │   └── derm_model.py
+│   │
+│   └── routes/
+│       └── upload.py
+│
 frontend/
-dermalens/
-src/
+│
+└── dermalens/
+    └── src/
+```
 
 ---
 
-## How to Run
+# ⚡ How to Run
 
-### Backend
+## Backend
 
+```bash
 cd backend
+
 python -m venv venv
+
 venv\Scripts\activate
+
 pip install -r ../requirements.txt
 
-Run API:
 python -m uvicorn app.main:app --reload
+```
 
 ---
 
-### Frontend
+## Frontend
 
+```bash
 cd frontend/dermalens
+
 npm install
+
 npm run dev
+```
 
 ---
 
-## Evaluation
+# 📈 Evaluation
 
-The system evaluates enhancement using:
+The system evaluates preprocessing using:
 
 * model confidence before enhancement
 * model confidence after enhancement
-* delta (difference)
+* confidence delta comparison
 
-Example:
+### Example
 
-Original → 0.80
-Enhanced → 0.83
-Δ → +0.03 (Improvement)
+```text
+Original Confidence   → 0.80
+Enhanced Confidence  → 0.83
 
----
-
-## Current Status
-
-* ✔ Full pipeline implemented
-* ✔ Model training completed (dermatology dataset)
-* ✔ Enhancement logic stabilized (non-destructive)
-* ✔ Evaluation framework integrated
-* ✔ UI working
+Δ Confidence         → +0.03
+Status               → Improvement
+```
 
 ---
 
-## Limitations
+# 📌 Current Status
 
-* Improvements are small due to conservative enhancement
-* No paired real-world low-quality dataset
-* Model trained on clean data (distribution mismatch possible)
+* ✔ Full adaptive preprocessing pipeline implemented
+* ✔ Dermatology model training completed
+* ✔ Enhancement logic stabilized
+* ✔ Quality analysis integrated
+* ✔ Confidence evaluation implemented
+* ✔ Modern frontend dashboard completed
 
 ---
 
-## Future Improvements
+# ⚠️ Limitations
 
-* Learned enhancement models (U-Net / GANs)
-* Adaptive threshold tuning
+* Conservative enhancement produces modest improvements
+* No paired real-world degraded dermatology dataset
+* Potential distribution mismatch between training and real-world images
+* Traditional sharpness metrics may overestimate enhancement quality
+
+---
+
+# 🔮 Future Improvements
+
+* U-Net / GAN-based learned enhancement
+* Adaptive threshold optimization
 * Larger dermatology datasets
-* Mobile integration
-* Real-world deployment in telemedicine
+* Grad-CAM explainability
+* Mobile deployment
+* Telemedicine integration
+* Real-time clinical validation
 
 ---
 
-## Author
+#  Author
 
-Stuti Katiyar
+### Stuti Katiyar ❤️
