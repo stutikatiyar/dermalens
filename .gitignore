@@ -4,6 +4,7 @@
 venv/
 __pycache__/
 *.pyc
+*.egg-info/
 
 # ======================
 # Node
@@ -15,28 +16,24 @@ dist/
 # Environment files
 # ======================
 .env
+.env.local
 
 # ======================
 # Data & Models (IMPORTANT)
 # ======================
 backend/data/
 backend/app/ml/models/
+backend/app/ml/restormer/
+backend/reports/
 *.pth
+*.ckpt
+*.safetensors
 
 # ======================
-# Images (optional, keep repo light)
-# ======================
-*.jpg
-*.jpeg
-*.png
-
-# ======================
-# OS files
+# OS / editor files
 # ======================
 .DS_Store
 Thumbs.db
+.vscode/
 
 *.zip
-
-venv/
-__pycache__/
