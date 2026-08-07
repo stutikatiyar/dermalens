@@ -1,4 +1,6 @@
 from app.ml.superres_enhancer import enhance_superres
+from app.ml.restormer.restormer_enhancer import enhance_restormer
+from app.ml.quality_analyzer import estimate_noise  # added to quality_analyzer.py earlier
 import cv2
 import numpy as np
 
@@ -39,6 +41,14 @@ def detect_blur(image):
     )
 
 
+# NEW: threshold for noise-based routing. This is a starting estimate,
+# NOT calibrated against your actual dataset -- run the pipeline once,
+# look at the printed "DEBUG -> noise_level" values for noise_* images
+# vs. clean/original images, and adjust this number to sit between the
+# two clusters you actually see.
+NOISE_THRESHOLD = 5.0
+
+
 def enhance_image(image_bytes):
 
     # decode image
@@ -64,9 +74,17 @@ def enhance_image(image_bytes):
         )
     )
 
+    # NEW: noise metric -- this was previously never computed here,
+    # which is why noisy images fell through every branch below and
+    # always ended up as "No Enhancement".
+    gray_for_noise = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    noise_level = estimate_noise(gray_for_noise)
+
     print("DEBUG → brightness:", brightness)
 
     print("DEBUG → sharpness:", sharpness)
+
+    print("DEBUG → noise_level:", noise_level)
 
     # default
     enhanced = img.copy()
@@ -107,7 +125,21 @@ def enhance_image(image_bytes):
             "Brightness Enhanced"
         )
 
-       
+    # NEW: NOISY IMAGE
+    # Checked before the blur/super-res branch on purpose: noise inflates
+    # Laplacian-variance sharpness (random noise reads as fake high-freq
+    # "edges"), so a noisy image would otherwise dodge the sharpness<80
+    # branch below and also get super-resolved on top of its noise,
+    # amplifying it instead of removing it.
+    if noise_level > NOISE_THRESHOLD:
+
+        enhanced = enhance_restormer(
+            enhanced
+        )
+
+        modes.append(
+            "Restormer Denoising"
+        )
 
     # BLURRY IMAGE
     if sharpness < 80:
