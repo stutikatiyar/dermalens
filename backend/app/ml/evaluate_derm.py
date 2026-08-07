@@ -11,11 +11,6 @@ import pandas as pd
 from app.ml.enhancement import enhance_image
 from app.ml.derm_model import load_model, predict
 
-# ASSUMPTION: app/ml/metrics.py exists and defines these three functions.
-# This matches what's currently on GitHub (origin/main). If this module
-# doesn't exist yet, either create it with these three functions, or
-# fall back to defining calculate_contrast/quality_score locally as in
-# the previous version of this file.
 from app.ml.metrics import (
     calculate_sharpness,
     calculate_contrast,
@@ -27,20 +22,44 @@ from app.evaluation.quality_metrics import (
     calculate_ssim,
 )
 
-# path to weights
 WEIGHTS_PATH = "app/ml/models/isic_resnet18.pth"
-
-# load model once
 model = load_model(WEIGHTS_PATH)
 
 CSV_OUTPUT_PATH = "reports/evaluation_results.csv"
 CATEGORY_CSV_DIR = "reports/by_category"
 
-# NOTE: keep this in sync with the prefixes stripped in
-# find_reference_image() below (dark_, blur_, motion_, noise_,
-# compressed_, lowres_) so every degradation type actually gets
-# bucketed into a category instead of falling through to "original".
 CATEGORY_PREFIXES = ["dark", "blur", "motion", "noise", "compressed", "lowres"]
+
+# ---------------------------------------------------------------------------
+# NEW: verified against train_derm.py — this is the exact order
+# torchvision.datasets.ImageFolder assigned class indices in, confirmed by
+# running sorted(os.listdir("data/train")) against the real training data.
+# derm_model.predict() returns an int index into THIS list — do not
+# reorder it or re-derive it by guessing (e.g. standard ISIC abbreviations
+# "mel"/"nv" do NOT match this project's actual folder names).
+# ---------------------------------------------------------------------------
+CLASS_NAMES = ["akiec", "bcc", "bkl", "df", "melanoma", "nevus", "vasc"]
+
+# ---------------------------------------------------------------------------
+# NEW: ground-truth labels for accuracy (Table II).
+# Expects a CSV at data/eval/labels.csv with columns: image_id,label
+# where image_id matches the reference filename stem (e.g. "ISIC_0030875")
+# and label matches whatever classes derm_model.predict() returns
+# (e.g. "melanoma", "nevus", ...). This is the standard HAM10000/ISIC
+# metadata format (GroundTruth.csv), just renamed/trimmed to two columns.
+# If this file doesn't exist, accuracy is skipped and everything else
+# still runs unchanged.
+# ---------------------------------------------------------------------------
+LABELS_PATH = "data/eval/labels.csv"
+
+
+def load_labels(base_dir):
+    full_path = os.path.join(base_dir, LABELS_PATH)
+    if not os.path.exists(full_path):
+        print(f"[warn] {LABELS_PATH} not found — accuracy metrics will be skipped.")
+        return {}
+    df = pd.read_csv(full_path)
+    return dict(zip(df["image_id"].astype(str), df["label"].astype(str)))
 
 
 def predict_confidence(image):
@@ -56,12 +75,6 @@ def get_category(filename):
 
 
 def find_reference_image(base_dir, filename):
-    """
-    Strips known degradation prefixes off `filename` and looks for a
-    matching clean image under data/eval/original/, trying a few common
-    extensions. Returns (reference_path, reference_image) where
-    reference_image is None if nothing was found.
-    """
     reference_name = (
         filename
         .replace("dark_", "")
@@ -74,12 +87,7 @@ def find_reference_image(base_dir, filename):
 
     reference_base = os.path.splitext(reference_name)[0]
 
-    reference_folder = os.path.join(
-        base_dir,
-        "data",
-        "eval",
-        "original"
-    )
+    reference_folder = os.path.join(base_dir, "data", "eval", "original")
 
     for ext in [".png", ".jpg", ".jpeg"]:
         candidate = os.path.join(reference_folder, reference_base + ext)
@@ -87,12 +95,12 @@ def find_reference_image(base_dir, filename):
             reference = cv2.imread(candidate)
             if reference is None:
                 print(f"Couldn't load {candidate}")
-            return candidate, reference
+            return candidate, reference, reference_base
 
-    return None, None
+    return None, None, reference_base
 
 
-def evaluate(image_path):
+def evaluate(image_path, labels):
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     full_path = os.path.join(base_dir, image_path)
 
@@ -113,15 +121,12 @@ def evaluate(image_path):
     cls_o, conf_o = predict(model, img)
 
     # ---- LOAD ORIGINAL REFERENCE IMAGE (for full-reference PSNR/SSIM) ----
-    reference_path, reference = find_reference_image(base_dir, filename)
+    reference_path, reference, reference_base = find_reference_image(base_dir, filename)
 
     # ---- ENHANCEMENT ----
     with open(full_path, "rb") as f:
         image_bytes = f.read()
 
-    # CONFIRMED against enhancement.py: enhance_image returns
-    # (original, enhanced, mode) where mode is a string like
-    # "Brightness Enhanced + AI Super Resolution" or "No Enhancement".
     _, enhanced, mode = enhance_image(image_bytes)
 
     # ---- AFTER metrics ----
@@ -133,36 +138,56 @@ def evaluate(image_path):
     delta = conf_e - conf_o
 
     # ---- FULL-REFERENCE metrics (PSNR / SSIM) ----
-    psnr_val = None
-    ssim_val = None
+    # NEW: compute BEFORE (degraded vs. reference) as well as AFTER
+    # (enhanced vs. reference), so Table I has a real before/after pair
+    # instead of only an "after" value.
+    psnr_before = ssim_before = None
+    psnr_after = ssim_after = None
+
     if reference is not None:
-        ref_for_metrics = reference
+        ref_for_img = reference
+        img_for_metrics = img
+        if ref_for_img.shape != img_for_metrics.shape:
+            ref_for_img = cv2.resize(ref_for_img, (img_for_metrics.shape[1], img_for_metrics.shape[0]))
+        psnr_before = calculate_psnr(ref_for_img, img_for_metrics)
+        ssim_before = calculate_ssim(ref_for_img, img_for_metrics)
+
+        ref_for_enh = reference
         enh_for_metrics = enhanced
+        if ref_for_enh.shape != enh_for_metrics.shape:
+            ref_for_enh = cv2.resize(ref_for_enh, (enh_for_metrics.shape[1], enh_for_metrics.shape[0]))
+        psnr_after = calculate_psnr(ref_for_enh, enh_for_metrics)
+        ssim_after = calculate_ssim(ref_for_enh, enh_for_metrics)
 
-        if ref_for_metrics.shape != enh_for_metrics.shape:
-            ref_for_metrics = cv2.resize(
-                ref_for_metrics,
-                (enh_for_metrics.shape[1], enh_for_metrics.shape[0])
-            )
+    # ---- NEW: accuracy (needs ground-truth label) ----
+    # cls_o / cls_e are integer class indices from predict(); map them to
+    # label strings via CLASS_NAMES before comparing to true_label, which
+    # is expected to be a string matching one of CLASS_NAMES.
+    pred_label_o = CLASS_NAMES[cls_o] if 0 <= cls_o < len(CLASS_NAMES) else None
+    pred_label_e = CLASS_NAMES[cls_e] if 0 <= cls_e < len(CLASS_NAMES) else None
 
-        psnr_val = calculate_psnr(ref_for_metrics, enh_for_metrics)
-        ssim_val = calculate_ssim(ref_for_metrics, enh_for_metrics)
+    true_label = labels.get(reference_base)
+    correct_before = correct_after = None
+    if true_label is not None and pred_label_o is not None and pred_label_e is not None:
+        correct_before = int(pred_label_o == true_label)
+        correct_after = int(pred_label_e == true_label)
 
     elapsed = time.time() - start_time
 
-    # ---- PRINT ----
     print("\n---", image_path, f"({category}) ---")
     print(f"Mode       → {mode}")
     print(f"Sharpness  → {round(sharpness_before, 2)} → {round(sharpness_after, 2)}")
     print(f"Contrast   → {round(contrast_before, 2)} → {round(contrast_after, 2)}")
     print(f"Quality    → {quality_before} → {quality_after}")
-    print(f"Confidence → {cls_o} ({round(conf_o, 4)}) → {cls_e} ({round(conf_e, 4)})")
+    print(f"Confidence → {pred_label_o} ({round(conf_o, 4)}) → {pred_label_e} ({round(conf_e, 4)})")
     print(f"Delta      → {round(delta, 4)}")
-    if psnr_val is not None:
-        print(f"PSNR       → {round(psnr_val, 4)}")
-        print(f"SSIM       → {round(ssim_val, 4)}")
+    if psnr_after is not None:
+        print(f"PSNR       → {round(psnr_before, 4)} → {round(psnr_after, 4)}")
+        print(f"SSIM       → {round(ssim_before, 4)} → {round(ssim_after, 4)}")
     else:
         print(f"Reference  → not found at {reference_path}, skipping PSNR/SSIM")
+    if true_label is not None:
+        print(f"Label      → {true_label} | correct before={bool(correct_before)} after={bool(correct_after)}")
     print(f"Time       → {round(elapsed, 3)}s")
 
     if delta > 0.02:
@@ -185,8 +210,15 @@ def evaluate(image_path):
         "confidence_before": round(conf_o, 4),
         "confidence_after": round(conf_e, 4),
         "delta": round(delta, 4),
-        "psnr": round(psnr_val, 4) if psnr_val is not None else "",
-        "ssim": round(ssim_val, 4) if ssim_val is not None else "",
+        "psnr_before": round(psnr_before, 4) if psnr_before is not None else "",
+        "psnr_after": round(psnr_after, 4) if psnr_after is not None else "",
+        "ssim_before": round(ssim_before, 4) if ssim_before is not None else "",
+        "ssim_after": round(ssim_after, 4) if ssim_after is not None else "",
+        "pred_label_before": pred_label_o if pred_label_o is not None else "",
+        "pred_label_after": pred_label_e if pred_label_e is not None else "",
+        "true_label": true_label if true_label is not None else "",
+        "correct_before": correct_before if correct_before is not None else "",
+        "correct_after": correct_after if correct_after is not None else "",
         "time_sec": round(elapsed, 4),
     }
 
@@ -205,7 +237,10 @@ def write_csv(rows, output_path):
         "quality_before", "quality_after",
         "confidence_before", "confidence_after",
         "delta",
-        "psnr", "ssim",
+        "psnr_before", "psnr_after",
+        "ssim_before", "ssim_after",
+        "pred_label_before", "pred_label_after",
+        "true_label", "correct_before", "correct_after",
         "time_sec",
     ]
 
@@ -219,11 +254,6 @@ def write_csv(rows, output_path):
 
 
 def write_category_csvs(rows, output_dir):
-    """
-    Splits results by category (dark/blur/motion/noise/compressed/lowres/
-    original) into separate CSVs, for per-degradation-type analysis --
-    useful for the paper's Results section breakdown.
-    """
     if not rows:
         print("No rows to write, skipping category CSVs.")
         return
@@ -243,18 +273,16 @@ def write_category_csvs(rows, output_dir):
 
 if __name__ == "__main__":
 
-    images = []
+    base_dir_main = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    labels = load_labels(base_dir_main)
 
+    images = []
     eval_folder = "data/eval"
 
     for file in sorted(os.listdir(eval_folder)):
         full_path = os.path.join(eval_folder, file)
-
-        # Skip folders (like original/)
         if os.path.isdir(full_path):
             continue
-
-        # Only process image files
         if file.lower().endswith((".png", ".jpg", ".jpeg")):
             images.append(full_path)
 
@@ -267,7 +295,7 @@ if __name__ == "__main__":
     unchanged = 0
 
     for img_path in images:
-        result = evaluate(img_path)
+        result = evaluate(img_path, labels)
 
         if result is None:
             continue
@@ -287,24 +315,32 @@ if __name__ == "__main__":
     write_csv(results, CSV_OUTPUT_PATH)
     write_category_csvs(results, CATEGORY_CSV_DIR)
 
-    # FINAL SUMMARY
     if results:
-        psnr_vals = [
-            r["psnr"]
-            for r in results
-            if r["psnr"] != "" and math.isfinite(r["psnr"])
-        ]
-        ssim_vals = [r["ssim"] for r in results if r["ssim"] != ""]
+        psnr_before_vals = [r["psnr_before"] for r in results if r["psnr_before"] != "" and math.isfinite(r["psnr_before"])]
+        psnr_after_vals = [r["psnr_after"] for r in results if r["psnr_after"] != "" and math.isfinite(r["psnr_after"])]
+        ssim_before_vals = [r["ssim_before"] for r in results if r["ssim_before"] != ""]
+        ssim_after_vals = [r["ssim_after"] for r in results if r["ssim_after"] != ""]
+
+        # NEW: accuracy summary for Table II
+        acc_before_vals = [r["correct_before"] for r in results if r["correct_before"] != ""]
+        acc_after_vals = [r["correct_after"] for r in results if r["correct_after"] != ""]
 
         print("\n========== FINAL REPORT ==========")
         print("Images Evaluated       :", len(results))
         print("Avg Sharpness Gain (abs):", round(float(np.mean(sharpness_gains)), 4))
         print("Avg Quality Gain (abs)  :", round(float(np.mean(quality_gains)), 4))
         print("Avg Confidence Δ        :", round(float(np.mean(deltas)), 4))
-        if psnr_vals:
-            print("Average PSNR            :", round(float(np.mean(psnr_vals)), 2), "dB")
-        if ssim_vals:
-            print("Average SSIM            :", round(float(np.mean(ssim_vals)), 4))
+        if psnr_before_vals and psnr_after_vals:
+            print("Average PSNR (before)   :", round(float(np.mean(psnr_before_vals)), 2), "dB")
+            print("Average PSNR (after)    :", round(float(np.mean(psnr_after_vals)), 2), "dB")
+        if ssim_before_vals and ssim_after_vals:
+            print("Average SSIM (before)   :", round(float(np.mean(ssim_before_vals)), 4))
+            print("Average SSIM (after)    :", round(float(np.mean(ssim_after_vals)), 4))
+        if acc_before_vals and acc_after_vals:
+            print("Accuracy (before) %     :", round(100 * float(np.mean(acc_before_vals)), 2))
+            print("Accuracy (after) %      :", round(100 * float(np.mean(acc_after_vals)), 2))
+        else:
+            print("Accuracy                : skipped (no data/eval/labels.csv found)")
         print("Improved                :", improved)
         print("Degraded                :", degraded)
         print("Unchanged               :", unchanged)
