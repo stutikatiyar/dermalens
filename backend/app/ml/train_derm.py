@@ -35,6 +35,11 @@ val_dir = os.path.join(base_dir, "data/val")
 train_ds = datasets.ImageFolder(train_dir, transform=train_tf)
 val_ds   = datasets.ImageFolder(val_dir, transform=val_tf)
 
+# print(train_ds.class_to_idx)
+# print(train_ds.classes)
+
+# exit()
+
 train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
 val_loader   = DataLoader(val_ds, batch_size=BATCH_SIZE)
 
@@ -86,3 +91,5 @@ for epoch in range(EPOCHS):
         print("✔ Saved best model:", save_path)
 
 print("Done. Best Val Acc:", best_acc)
+print(train_ds.class_to_idx)
+print(train_ds.classes)
