@@ -1,5 +1,4 @@
-import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { useState } from "react";
 
 export default function ResultSection({
   image,
@@ -8,573 +7,637 @@ export default function ResultSection({
   confidence,
   mode,
   insights,
-  enhancementAccepted,
+  enhancementAccepted
 }) {
-  const [zoomOriginal, setZoomOriginal] = useState(1);
-  const [zoomResult, setZoomResult] = useState(1);
-  const [compare, setCompare] = useState(50);
+  const [slider, setSlider] = useState(50);
+  const [zoom, setZoom] = useState(false);
 
-  if (!image || !enhanced) return null;
+  const m = metrics || {};
+  const c = confidence || {};
 
-  const accepted =
-    enhancementAccepted !== undefined ? enhancementAccepted : true;
+  const format = (value, digits = 1) => {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+      return "—";
+    }
 
-  const sharpnessBefore = Number(metrics?.sharpness_before ?? 0);
-  const sharpnessAfter = Number(metrics?.sharpness_after ?? 0);
-  const contrastBefore = Number(metrics?.contrast_before ?? 0);
-  const contrastAfter = Number(metrics?.contrast_after ?? 0);
-  const qualityBefore = Number(metrics?.quality_before ?? 0);
-  const qualityAfter = Number(metrics?.quality_after ?? 0);
-
-  const percentChange = (before, after) => {
-    if (!Number.isFinite(before) || before === 0) return null;
-    return ((after - before) / Math.abs(before)) * 100;
+    return Number(value).toFixed(digits);
   };
 
-  const formatChange = (before, after) => {
-    const change = percentChange(before, after);
+  const percentage = (value) => {
+    if (
+      value === null ||
+      value === undefined ||
+      Number.isNaN(Number(value))
+    ) {
+      return "—";
+    }
 
-    if (change === null) return "—";
-    if (Math.abs(change) < 0.5) return "Stable";
-
-    return change > 0
-      ? `↑ ${change.toFixed(0)}%`
-      : `↓ ${Math.abs(change).toFixed(0)}%`;
+    return `${(Number(value) * 100).toFixed(1)}%`;
   };
 
-  const blurFinding = useMemo(() => {
-    if (sharpnessBefore < 10) return "Severe blur detected";
-    if (sharpnessBefore < 40) return "Moderate blur detected";
-    if (sharpnessBefore < 80) return "Mild blur detected";
-    return "Image is relatively sharp";
-  }, [sharpnessBefore]);
+  const signedPercentagePoints = (value) => {
+    if (
+      value === null ||
+      value === undefined ||
+      Number.isNaN(Number(value))
+    ) {
+      return "—";
+    }
 
-  const contrastFinding = useMemo(() => {
-    if (contrastBefore < 15) return "Low contrast detected";
-    if (contrastBefore < 30) return "Moderate contrast";
-    return "Contrast is adequate";
-  }, [contrastBefore]);
+    const n = Number(value) * 100;
 
-  const enhancementLabel = accepted
-    ? mode || "Adaptive enhancement applied"
-    : "Original preserved — no safe enhancement selected";
+    return `${n >= 0 ? "+" : ""}${n.toFixed(1)} pp`;
+  };
 
-  const displayedConfidence =
-    confidence?.final !== undefined
-      ? confidence.final
-      : confidence?.after;
-
-  const confidenceDelta =
-    confidence?.delta !== undefined
-      ? confidence.delta * 100
+  const qualityImprovement =
+    m.quality_improvement !== undefined
+      ? Number(m.quality_improvement)
       : null;
 
-  const qualityChange = percentChange(qualityBefore, qualityAfter);
+  const qualityImproved =
+    qualityImprovement !== null && qualityImprovement > 0;
 
-  const qualityStatus =
-    qualityChange === null
-      ? "Not available"
-      : qualityChange > 2
-        ? "Improved"
-        : qualityChange < -2
-          ? "Reduced"
-          : "Stable";
-
-  const zoomIn = (current, setter) => {
-    setter(Math.min(current + 0.25, 2.5));
-  };
-
-  const zoomOut = (current, setter) => {
-    setter(Math.max(current - 0.25, 1));
-  };
+  const accepted =
+    enhancementAccepted !== undefined
+      ? enhancementAccepted
+      : mode !== "No Enhancement";
 
   return (
-    <section className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-24">
-      {/* HEADER */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5">
-          <div>
-            <p className="text-cyan-300 text-xs font-semibold tracking-[0.3em] uppercase">
-              DermaLens Analysis
-            </p>
+    <section className="relative z-10 px-6 pb-24">
+      <div className="max-w-6xl mx-auto">
 
-            <h2 className="text-white text-3xl md:text-4xl font-black mt-3">
-              Image quality assessment
-            </h2>
+        {/* HEADER */}
+        <div className="mb-8">
 
-            <p className="text-slate-400 mt-3 max-w-2xl leading-relaxed">
-              DermaLens evaluates image degradation, applies adaptive
-              restoration when useful, and preserves the original when a safe
-              improvement cannot be established.
-            </p>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan-400 font-semibold">
+                Pipeline Result
+              </p>
+
+              <h2 className="mt-2 text-3xl md:text-4xl font-bold text-white">
+                {accepted
+                  ? "Enhancement accepted"
+                  : "Original image preserved"}
+              </h2>
+
+              <p className="mt-3 text-sm text-slate-400 max-w-2xl leading-relaxed">
+                {accepted
+                  ? "A candidate enhancement passed the image-quality validation gate and was selected as the final output."
+                  : "No enhancement candidate provided sufficient benefit under the validation criteria, so the original image was safely retained."}
+              </p>
+            </div>
+
+            <div
+              className={`shrink-0 px-4 py-3 rounded-xl border ${
+                accepted
+                  ? "border-cyan-400/20 bg-cyan-400/[0.06]"
+                  : "border-amber-400/20 bg-amber-400/[0.05]"
+              }`}
+            >
+              <p className="text-[10px] uppercase tracking-widest text-slate-500">
+                Final decision
+              </p>
+
+              <p
+                className={`mt-1 text-sm font-semibold ${
+                  accepted
+                    ? "text-cyan-300"
+                    : "text-amber-300"
+                }`}
+              >
+                {accepted ? "✓ Enhancement accepted" : "↺ Original preserved"}
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        {/* IMAGE COMPARISON */}
+        <div className="rounded-3xl border border-white/10 bg-slate-950/80 overflow-hidden">
+
+          <div className="px-6 py-5 border-b border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-white">
+                Before / After Comparison
+              </h3>
+
+              <p className="text-xs text-slate-500 mt-1">
+                Interactive comparison of the original and final pipeline output
+              </p>
+            </div>
+
+            <button
+              onClick={() => setZoom(!zoom)}
+              className="px-3 py-2 rounded-lg border border-white/10 text-xs text-slate-300 hover:bg-white/5 transition"
+            >
+              {zoom ? "Exit zoom" : "Zoom image"}
+            </button>
           </div>
 
           <div
-            className={`self-start md:self-auto px-4 py-2 rounded-full border text-sm font-semibold ${
-              accepted
-                ? "bg-cyan-500/10 border-cyan-400/20 text-cyan-300"
-                : "bg-amber-500/10 border-amber-400/20 text-amber-300"
+            className={`relative overflow-hidden bg-black ${
+              zoom ? "min-h-[650px]" : "min-h-[420px]"
             }`}
           >
-            {accepted ? "Enhancement applied" : "Original preserved"}
-          </div>
-        </div>
-      </motion.div>
 
-      {/* QUALITY ANALYSIS */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="rounded-[28px] border border-white/10 bg-[#071225]/80 backdrop-blur-xl p-6 md:p-8 mb-8"
-      >
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <div>
-            <p className="text-white text-xl font-bold">
-              Image quality analysis
-            </p>
-            <p className="text-slate-500 text-sm mt-1">
-              Detected degradation and selected restoration path
-            </p>
-          </div>
-
-          <div className="hidden sm:block text-xs text-slate-500">
-            Adaptive pipeline
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FindingCard
-            label="Blur"
-            value={blurFinding}
-            detail={`Sharpness ${sharpnessBefore.toFixed(2)}`}
-            positive={sharpnessBefore >= 80}
-          />
-
-          <FindingCard
-            label="Contrast"
-            value={contrastFinding}
-            detail={`Contrast ${contrastBefore.toFixed(2)}`}
-            positive={contrastBefore >= 30}
-          />
-
-          <FindingCard
-            label="Enhancement"
-            value={enhancementLabel}
-            detail={accepted ? "Candidate accepted" : "Safe fallback used"}
-            positive={accepted}
-            warning={!accepted}
-          />
-        </div>
-      </motion.div>
-
-      {/* ORIGINAL / RESULT */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ImagePanel
-          title="Original"
-          subtitle="Uploaded image"
-          image={image}
-          zoom={zoomOriginal}
-          setZoom={setZoomOriginal}
-          onZoomIn={() => zoomIn(zoomOriginal, setZoomOriginal)}
-          onZoomOut={() => zoomOut(zoomOriginal, setZoomOriginal)}
-          accent="neutral"
-        />
-
-        <ImagePanel
-          title={accepted ? "DermaLens Result" : "Original Preserved"}
-          subtitle={
-            accepted
-              ? "Selected adaptive enhancement"
-              : "Enhancement was not selected"
-          }
-          image={enhanced}
-          zoom={zoomResult}
-          setZoom={setZoomResult}
-          onZoomIn={() => zoomIn(zoomResult, setZoomResult)}
-          onZoomOut={() => zoomOut(zoomResult, setZoomResult)}
-          accent={accepted ? "cyan" : "amber"}
-        />
-      </div>
-
-      {/* COMPARE */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="mt-8 rounded-[28px] border border-white/10 bg-[#071225]/80 backdrop-blur-xl p-5 md:p-7"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-          <div>
-            <p className="text-white font-bold">Compare</p>
-            <p className="text-slate-500 text-sm mt-1">
-              Drag the divider to inspect changes at the same location.
-            </p>
-          </div>
-
-          <div className="text-xs text-slate-500">
-            Original ↔ Result
-          </div>
-        </div>
-
-        <div className="relative w-full aspect-[4/3] md:aspect-[16/9] overflow-hidden rounded-2xl bg-black border border-white/10 select-none">
-          <img
-            src={enhanced}
-            alt="DermaLens result comparison"
-            className="absolute inset-0 w-full h-full object-contain"
-          />
-
-          <div
-            className="absolute inset-y-0 left-0 overflow-hidden border-r-2 border-white/80"
-            style={{ width: `${compare}%` }}
-          >
+            {/* AFTER */}
             <img
-              src={image}
-              alt="Original comparison"
-              className="absolute inset-0 w-full h-full object-contain max-w-none"
-              style={{ width: "100%", height: "100%" }}
+              src={enhanced}
+              alt="DermaLens final output"
+              className={`absolute inset-0 w-full h-full object-contain ${
+                zoom ? "scale-125" : ""
+              } transition-transform duration-300`}
             />
+
+            {/* BEFORE */}
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{ width: `${slider}%` }}
+            >
+              <img
+                src={image}
+                alt="Original dermatology image"
+                className={`absolute inset-0 w-full h-full object-contain ${
+                  zoom ? "scale-125" : ""
+                } max-w-none`}
+                style={{
+                  width: "100vw",
+                  maxWidth: "none"
+                }}
+              />
+            </div>
+
+            {/* DIVIDER */}
+            <div
+              className="absolute top-0 bottom-0 w-px bg-white/80"
+              style={{ left: `${slider}%` }}
+            >
+              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-slate-950 border border-white/30 flex items-center justify-center text-white shadow-xl">
+                ↔
+              </div>
+            </div>
+
+            {/* SLIDER */}
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={slider}
+              onChange={(e) => setSlider(Number(e.target.value))}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
+              aria-label="Compare original and enhanced image"
+            />
+
+            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur text-xs text-white z-10">
+              Original
+            </div>
+
+            <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-cyan-400/90 text-slate-950 font-semibold text-xs z-10">
+              DermaLens output
+            </div>
+
           </div>
 
-          <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-white text-slate-900 flex items-center justify-center shadow-xl pointer-events-none"
-            style={{ left: `${compare}%` }}
-          >
-            ↔
+          <div className="px-6 py-4 text-center text-xs text-slate-500">
+            Drag the center control to compare the original and final image.
+          </div>
+        </div>
+
+        {/* QUALITY ANALYSIS */}
+        <div className="mt-8">
+
+          <SectionHeader
+            eyebrow="IMAGE QUALITY"
+            title="What changed in the image?"
+            description="These are image-quality indicators used by the current pipeline to evaluate the input and candidate output."
+          />
+
+          <div className="grid md:grid-cols-3 gap-4 mt-5">
+
+            <MetricCard
+              title="Sharpness"
+              before={format(m.sharpness_before)}
+              after={format(m.sharpness_after)}
+              multiplier={m.sharpness_multiplier}
+              description="Higher generally indicates more high-frequency detail."
+            />
+
+            <MetricCard
+              title="Brightness"
+              before={format(m.brightness_before)}
+              after={format(m.brightness_after)}
+              change={
+                m.brightness_improvement !== undefined
+                  ? percentage(m.brightness_improvement)
+                  : null
+              }
+              description="Used to assess illumination and exposure."
+            />
+
+            <MetricCard
+              title="Contrast"
+              before={format(m.contrast_before)}
+              after={format(m.contrast_after)}
+              description="Measures separation between image intensities."
+            />
+
           </div>
 
-          <input
-            aria-label="Before and after comparison"
-            type="range"
-            min="0"
-            max="100"
-            value={compare}
-            onChange={(e) => setCompare(Number(e.target.value))}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
-          />
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
 
-          <span className="absolute top-4 left-4 px-3 py-1 rounded-full bg-black/60 text-white text-xs font-semibold backdrop-blur-md">
-            ORIGINAL
-          </span>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
-          <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-black/60 text-white text-xs font-semibold backdrop-blur-md">
-            {accepted ? "DERMALENS" : "ORIGINAL"}
-          </span>
-        </div>
-      </motion.div>
+              <div>
+                <p className="text-xs uppercase tracking-widest text-slate-500">
+                  Composite pipeline quality score
+                </p>
 
-      {/* QUALITY CHANGE */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="mt-8 rounded-[28px] border border-white/10 bg-[#071225]/80 backdrop-blur-xl p-6 md:p-8"
-      >
-        <div className="mb-6">
-          <p className="text-white text-xl font-bold">Quality change</p>
-          <p className="text-slate-500 text-sm mt-1">
-            Measured changes between the uploaded and selected result image.
-          </p>
-        </div>
+                <p className="text-sm text-slate-400 mt-1">
+                  Based on the current sharpness, contrast and brightness scoring function.
+                </p>
+              </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <QualityChangeCard
-            label="Sharpness"
-            before={sharpnessBefore}
-            after={sharpnessAfter}
-            change={formatChange(sharpnessBefore, sharpnessAfter)}
-          />
+              <div className="flex items-center gap-4">
+                <ScoreValue
+                  label="Before"
+                  value={format(m.quality_before)}
+                />
 
-          <QualityChangeCard
-            label="Contrast"
-            before={contrastBefore}
-            after={contrastAfter}
-            change={formatChange(contrastBefore, contrastAfter)}
-          />
+                <span className="text-slate-600">→</span>
 
-          <QualityChangeCard
-            label="Quality"
-            before={qualityBefore}
-            after={qualityAfter}
-            change={qualityStatus}
-          />
+                <ScoreValue
+                  label="After"
+                  value={format(m.quality_after)}
+                  highlight
+                />
 
-          <QualityChangeCard
-            label="Structure"
-            before="—"
-            after="—"
-            change="SSIM later"
-            muted
-          />
-        </div>
-      </motion.div>
-
-      {/* ENHANCEMENT DETAILS */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
-        className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6"
-      >
-        <div className="rounded-[28px] border border-white/10 bg-[#071225]/80 backdrop-blur-xl p-6 md:p-8">
-          <p className="text-white text-xl font-bold">What DermaLens did</p>
-
-          <div className="mt-5 space-y-3">
-            {insights?.length ? (
-              insights.map((item, index) => (
-                <motion.div
-                  key={`${item}-${index}`}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + index * 0.06 }}
-                  className="flex gap-3 items-start"
-                >
-                  <span className="mt-2 w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-                  <p className="text-slate-300 text-sm leading-relaxed">
-                    {item}
+                <div className="px-3 py-2 rounded-lg bg-cyan-400/10 border border-cyan-400/20">
+                  <p className="text-xs text-cyan-300 font-semibold">
+                    {qualityImprovement !== null
+                      ? `${qualityImprovement >= 0 ? "+" : ""}${(
+                          qualityImprovement * 100
+                        ).toFixed(1)}%`
+                      : "—"}
                   </p>
-                </motion.div>
-              ))
-            ) : (
-              <p className="text-slate-500 text-sm">
-                No additional enhancement notes were returned.
-              </p>
-            )}
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-white/10 bg-[#071225]/80 backdrop-blur-xl p-6 md:p-8">
-          <p className="text-white text-xl font-bold">Model signal</p>
+        {/* VALIDATION */}
+        <div className="mt-10">
 
-          <p className="text-slate-500 text-sm mt-1">
-            Technical information from the current downstream model.
-          </p>
+          <SectionHeader
+            eyebrow="VALIDATION GATE"
+            title="Why was this output accepted?"
+            description="The current backend evaluates enhancement candidates using safety and quality signals rather than classifier confidence."
+          />
 
-          {confidence && displayedConfidence !== undefined ? (
-            <div className="mt-6">
-              <p className="text-slate-400 text-sm">Final model confidence</p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-3 mt-5">
 
-              <p className="text-3xl font-black text-white mt-1">
-                {(displayedConfidence * 100).toFixed(2)}%
-              </p>
+            <ValidationCard
+              title="Structure"
+              text="Preserved"
+            />
 
-              {confidenceDelta !== null && (
-                <p
-                  className={`text-sm mt-2 ${
-                    confidenceDelta >= 0
-                      ? "text-emerald-400"
-                      : "text-amber-400"
-                  }`}
-                >
-                  {confidenceDelta >= 0 ? "↑" : "↓"}{" "}
-                  {Math.abs(confidenceDelta).toFixed(2)} percentage points
+            <ValidationCard
+              title="Brightness"
+              text="Controlled"
+            />
+
+            <ValidationCard
+              title="Sharpness"
+              text="Controlled"
+            />
+
+            <ValidationCard
+              title="Noise"
+              text="Monitored"
+            />
+
+            <ValidationCard
+              title="Color shift"
+              text="Monitored"
+            />
+
+          </div>
+
+          <div className="mt-4 p-5 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.035]">
+            <p className="text-sm text-slate-300 leading-relaxed">
+              <span className="font-semibold text-cyan-300">
+                Safety-first selection:
+              </span>{" "}
+              DermaLens does not simply choose the sharpest image.
+              Candidate enhancements are scored while penalizing excessive
+              sharpening, noise growth and structural or color changes.
+            </p>
+          </div>
+        </div>
+
+        {/* WHAT IT DID */}
+        <div className="mt-10">
+
+          <SectionHeader
+            eyebrow="INTERPRETATION"
+            title="What DermaLens detected"
+            description="The system interprets image condition and explains the selected processing path."
+          />
+
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-6">
+
+            <div className="flex flex-wrap gap-3">
+
+              {insights && insights.length > 0 ? (
+                insights.map((insight, index) => (
+                  <div
+                    key={`${insight}-${index}`}
+                    className="px-4 py-3 rounded-xl border border-white/10 bg-slate-950/60 text-sm text-slate-300"
+                  >
+                    <span className="text-cyan-400 mr-2">•</span>
+                    {cleanConfidenceText(insight)}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">
+                  No additional interpretation was returned.
                 </p>
               )}
 
-              <p className="text-xs text-slate-500 leading-relaxed mt-4">
-                This is a downstream model signal, not a diagnosis and not the
-                primary criterion for image enhancement.
+            </div>
+
+            <div className="mt-6 pt-5 border-t border-white/10">
+
+              <p className="text-xs uppercase tracking-widest text-slate-500">
+                Selected processing path
+              </p>
+
+              <p className="mt-2 text-sm font-semibold text-white">
+                {mode || "Not specified"}
+              </p>
+
+            </div>
+          </div>
+        </div>
+
+        {/* DOWNSTREAM MODEL */}
+        <div className="mt-10">
+
+          <SectionHeader
+            eyebrow="DOWNSTREAM AI SIGNAL"
+            title="Does the downstream model respond differently?"
+            description="The current system reports a ResNet18 confidence comparison as a secondary signal. This is not yet a full model-performance evaluation."
+          />
+
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-6">
+
+            <div className="grid md:grid-cols-3 gap-5">
+
+              <ConfidenceCard
+                label="Before DermaLens"
+                value={percentage(c.before)}
+              />
+
+              <ConfidenceCard
+                label="After DermaLens"
+                value={percentage(c.after)}
+                highlight
+              />
+
+              <ConfidenceCard
+                label="Change"
+                value={signedPercentagePoints(c.delta)}
+                highlight={Number(c.delta) > 0}
+              />
+
+            </div>
+
+            <div className="mt-5 p-4 rounded-xl bg-amber-400/[0.04] border border-amber-400/15">
+              <p className="text-xs text-amber-200/80 leading-relaxed">
+                <span className="font-semibold text-amber-200">
+                  Important:
+                </span>{" "}
+                A change in classifier confidence does not prove improved
+                diagnostic accuracy. The current signal is informational;
+                enhancement acceptance is determined independently using
+                image-quality validation.
               </p>
             </div>
-          ) : (
-            <p className="text-slate-500 text-sm mt-6">
-              Model signal unavailable.
-            </p>
-          )}
+
+          </div>
         </div>
-      </motion.div>
 
-      {/* DOWNSTREAM ANALYSIS */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="mt-8 rounded-[28px] border border-cyan-400/15 bg-gradient-to-br from-cyan-500/[0.07] to-blue-500/[0.04] backdrop-blur-xl p-6 md:p-8"
-      >
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div>
-            <p className="text-cyan-300 text-xs font-semibold tracking-[0.25em] uppercase">
-              Next stage
-            </p>
+        {/* WHY IT MATTERS */}
+        <div className="mt-10 rounded-3xl border border-cyan-400/15 bg-gradient-to-br from-cyan-400/[0.06] to-transparent p-7 md:p-9">
 
-            <h3 className="text-white text-2xl font-black mt-2">
-              Downstream abnormality analysis
-            </h3>
+          <p className="text-xs uppercase tracking-[0.2em] text-cyan-400 font-semibold">
+            Why DermaLens matters
+          </p>
 
-            <p className="text-slate-400 mt-2 max-w-2xl leading-relaxed">
-              The image is prepared for the next analysis layer. DermaLens can
-              route the image toward lesion, wound, or future abnormality
-              models without making a diagnosis here.
-            </p>
+          <h3 className="mt-3 text-2xl font-bold text-white">
+            A preprocessing layer between the image and the AI model.
+          </h3>
+
+          <p className="mt-4 text-sm text-slate-400 leading-relaxed max-w-3xl">
+            Dermatology AI systems depend on the quality of their input
+            images. DermaLens is designed to sit before those systems:
+            assessing image degradation, applying adaptive enhancement,
+            validating the result, and providing a safer optimized input
+            for downstream classification, detection or other AI tasks.
+          </p>
+
+          <div className="mt-7 grid md:grid-cols-5 gap-2 items-center">
+
+            <FlowBox text="Raw Image" />
+
+            <FlowArrow />
+
+            <FlowBox text="DermaLens" active />
+
+            <FlowArrow />
+
+            <FlowBox text="Downstream AI" />
+
           </div>
 
-          <button
-            type="button"
-            disabled
-            className="shrink-0 px-6 py-3 rounded-2xl bg-cyan-500/10 border border-cyan-400/20 text-cyan-200 font-semibold cursor-not-allowed opacity-80"
-          >
-            Analyze Skin Abnormality
-          </button>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <RouteChip title="Lesion" status="ISIC model" />
-          <RouteChip title="Wound / Cut" status="Future model" />
-          <RouteChip title="Other" status="Future model" />
+        {/* EVALUATION NOTE */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            Current live metrics describe image-quality changes. Formal
+            PSNR, SSIM, LPIPS and downstream task-performance evaluation
+            belong to the experimental evaluation stage of the project.
+          </p>
         </div>
-      </motion.div>
+
+      </div>
     </section>
   );
 }
 
-function FindingCard({
-  label,
-  value,
-  detail,
-  positive = false,
-  warning = false,
-}) {
+function SectionHeader({ eyebrow, title, description }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-slate-400 text-sm">{label}</p>
+    <div>
+      <p className="text-xs uppercase tracking-[0.2em] text-cyan-400 font-semibold">
+        {eyebrow}
+      </p>
 
-        <span
-          className={`w-2 h-2 rounded-full ${
-            warning
-              ? "bg-amber-400"
-              : positive
-                ? "bg-emerald-400"
-                : "bg-cyan-400"
-          }`}
-        />
-      </div>
+      <h3 className="mt-2 text-2xl font-bold text-white">
+        {title}
+      </h3>
 
-      <p className="text-white font-semibold mt-3 leading-snug">{value}</p>
-      <p className="text-slate-500 text-xs mt-2">{detail}</p>
-    </div>
-  );
-}
-
-function ImagePanel({
-  title,
-  subtitle,
-  image,
-  zoom,
-  onZoomIn,
-  onZoomOut,
-  accent,
-}) {
-  const border =
-    accent === "cyan"
-      ? "border-cyan-400/25"
-      : accent === "amber"
-        ? "border-amber-400/25"
-        : "border-white/10";
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`rounded-[28px] border ${border} bg-[#071225]/80 backdrop-blur-xl p-4`}
-    >
-      <div className="flex items-center justify-between gap-3 px-1 pb-4">
-        <div>
-          <p className="text-white font-bold">{title}</p>
-          <p className="text-slate-500 text-xs mt-1">{subtitle}</p>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={onZoomOut}
-            className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.07]"
-            aria-label={`Zoom out ${title}`}
-          >
-            −
-          </button>
-
-          <span className="text-xs text-slate-500 min-w-10 text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-
-          <button
-            type="button"
-            onClick={onZoomIn}
-            className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.07]"
-            aria-label={`Zoom in ${title}`}
-          >
-            +
-          </button>
-        </div>
-      </div>
-
-      <div className="relative h-[360px] rounded-2xl overflow-auto bg-black border border-white/5">
-        <div className="w-full h-full flex items-center justify-center overflow-hidden">
-          <img
-            src={image}
-            alt={title}
-            className="max-w-none object-contain transition-transform duration-200"
-            style={{
-              width: `${zoom * 100}%`,
-              height: `${zoom * 100}%`,
-            }}
-          />
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function QualityChangeCard({
-  label,
-  before,
-  after,
-  change,
-  muted = false,
-}) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
-      <p className="text-slate-400 text-sm">{label}</p>
-
-      <div className="flex items-end gap-2 mt-3">
-        <span className="text-white text-xl font-bold">
-          {typeof before === "number" ? before.toFixed(2) : before}
-        </span>
-
-        <span className="text-slate-600 pb-1">→</span>
-
-        <span className="text-white text-xl font-bold">
-          {typeof after === "number" ? after.toFixed(2) : after}
-        </span>
-      </div>
-
-      <p
-        className={`text-xs font-semibold mt-2 ${
-          muted
-            ? "text-slate-500"
-            : change?.startsWith("↑") || change === "Improved"
-              ? "text-emerald-400"
-              : change?.startsWith("↓") || change === "Reduced"
-                ? "text-amber-400"
-                : "text-slate-400"
-        }`}
-      >
-        {change}
+      <p className="mt-2 text-sm text-slate-500 max-w-3xl leading-relaxed">
+        {description}
       </p>
     </div>
   );
 }
 
-function RouteChip({ title, status }) {
+function MetricCard({
+  title,
+  before,
+  after,
+  multiplier,
+  change,
+  description
+}) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
-      <p className="text-white text-sm font-semibold">{title}</p>
-      <p className="text-slate-500 text-xs mt-1">{status}</p>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+
+      <p className="text-sm font-semibold text-white">
+        {title}
+      </p>
+
+      <div className="mt-5 flex items-end gap-3">
+
+        <div>
+          <p className="text-[10px] uppercase text-slate-600">
+            Before
+          </p>
+          <p className="text-xl font-bold text-slate-300">
+            {before}
+          </p>
+        </div>
+
+        <span className="text-slate-600 mb-1">→</span>
+
+        <div>
+          <p className="text-[10px] uppercase text-cyan-500">
+            After
+          </p>
+          <p className="text-xl font-bold text-cyan-300">
+            {after}
+          </p>
+        </div>
+
+      </div>
+
+      {multiplier !== undefined && multiplier !== null && (
+        <div className="mt-4 text-xs text-slate-500">
+          Change factor:{" "}
+          <span className="text-slate-300">
+            {Number(multiplier).toFixed(2)}×
+          </span>
+        </div>
+      )}
+
+      {change !== undefined && change !== null && (
+        <div className="mt-4 text-xs text-cyan-300">
+          Improvement: {change}
+        </div>
+      )}
+
+      <p className="mt-4 text-xs text-slate-600 leading-relaxed">
+        {description}
+      </p>
     </div>
   );
+}
+
+function ScoreValue({ label, value, highlight }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-slate-600">
+        {label}
+      </p>
+
+      <p
+        className={`mt-1 text-lg font-bold ${
+          highlight ? "text-cyan-300" : "text-slate-300"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function ValidationCard({ title, text }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
+      <div className="w-7 h-7 rounded-full bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center text-cyan-400 text-xs">
+        ✓
+      </div>
+
+      <p className="mt-3 text-sm font-semibold text-white">
+        {title}
+      </p>
+
+      <p className="mt-1 text-xs text-slate-500">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+function ConfidenceCard({ label, value, highlight }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-950/50 p-5">
+      <p className="text-xs text-slate-500">
+        {label}
+      </p>
+
+      <p
+        className={`mt-3 text-3xl font-bold ${
+          highlight ? "text-cyan-300" : "text-white"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function FlowBox({ text, active }) {
+  return (
+    <div
+      className={`rounded-xl border p-4 text-center text-xs font-semibold ${
+        active
+          ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300"
+          : "border-white/10 bg-white/[0.025] text-slate-300"
+      }`}
+    >
+      {text}
+    </div>
+  );
+}
+
+function FlowArrow() {
+  return (
+    <div className="text-center text-slate-600 hidden md:block">
+      →
+    </div>
+  );
+}
+
+function cleanConfidenceText(text) {
+  if (!text) return text;
+
+  return text
+    .replace(/AI classifier confidence changed by/gi, "Downstream model signal changed by")
+    .replace(/AI classifier confidence remained unchanged/gi, "Downstream model signal remained unchanged");
 }

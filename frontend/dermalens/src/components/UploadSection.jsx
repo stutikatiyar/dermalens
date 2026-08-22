@@ -1,138 +1,131 @@
-import { motion } from "framer-motion";
-
-export default function UploadSection({
-
-  handleChange
-
-}) {
-
+export default function UploadSection({ handleChange }) {
   return (
+    <section className="relative z-10 px-6 pb-24">
+      <div className="max-w-6xl mx-auto">
 
-    <motion.section
-
-      initial={{
-        opacity: 0,
-        y: 20
-      }}
-
-      animate={{
-        opacity: 1,
-        y: 0
-      }}
-
-      transition={{
-        duration: 0.6
-      }}
-
-      className="relative z-10 flex justify-center px-6 -mt-10 pb-24"
-    >
-
-      <div className="
-        w-full
-        max-w-4xl
-        rounded-[36px]
-        border
-        border-cyan-500/10
-        bg-[#020617]/70
-        backdrop-blur-2xl
-        p-12
-        shadow-[0_0_80px_rgba(34,211,238,0.06)]
-      ">
-
-        {/* HEADER */}
+        {/* SECTION INTRO */}
         <div className="text-center mb-10">
-
-          <p className="text-cyan-300 text-sm tracking-[0.3em] uppercase">
-
-            AI Upload Gateway
-
+          <p className="text-xs uppercase tracking-[0.2em] text-cyan-400 font-semibold">
+            Test the middleware
           </p>
 
-          <h2 className="text-white text-4xl font-black mt-4">
-
-            Upload Dermatology Image
-
+          <h2 className="mt-3 text-3xl md:text-4xl font-bold text-white">
+            See what DermaLens does to an image
           </h2>
 
-          <p className="text-slate-400 mt-4 max-w-xl mx-auto leading-relaxed">
-
-            Analyze degraded dermatology images using
-            adaptive AI restoration and confidence validation.
-
+          <p className="mt-4 text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Upload a dermatological image and watch the pipeline assess
+            image quality, generate enhancement candidates, validate the
+            result, and produce an optimized input for downstream AI.
           </p>
+        </div>
+
+        {/* PIPELINE CARDS */}
+        <div className="grid md:grid-cols-4 gap-3 mb-8">
+
+          <InfoCard
+            number="01"
+            title="Analyze"
+            text="Identify blur, illumination, contrast and image-quality issues."
+          />
+
+          <InfoCard
+            number="02"
+            title="Enhance"
+            text="Generate adaptive restoration candidates based on image condition."
+          />
+
+          <InfoCard
+            number="03"
+            title="Validate"
+            text="Check structure, noise, brightness, sharpness and color stability."
+          />
+
+          <InfoCard
+            number="04"
+            title="Output"
+            text="Return the improved image or safely preserve the original."
+          />
 
         </div>
 
-        {/* DROPZONE */}
-        <label
-          htmlFor="upload"
-          className="
-            relative
-            block
-            rounded-[32px]
-            border-2
-            border-dashed
-            border-cyan-500/20
-            bg-white/[0.03]
-            hover:bg-cyan-500/[0.03]
-            hover:border-cyan-400/40
-            transition-all
-            duration-300
-            cursor-pointer
-            overflow-hidden
-          "
-        >
+        {/* UPLOAD */}
+        <div className="max-w-4xl mx-auto">
 
-          {/* Glow */}
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-400/5 to-blue-500/0" />
+          <label
+            htmlFor="dermalens-upload"
+            className="group block cursor-pointer"
+          >
+            <div className="relative overflow-hidden rounded-3xl border border-cyan-400/20 bg-slate-950/70 backdrop-blur-xl p-8 md:p-12 text-center transition-all duration-300 hover:border-cyan-400/40 hover:bg-slate-900/80">
 
-          <div className="relative flex flex-col items-center justify-center py-24 px-8 text-center">
+              <div className="absolute inset-0 bg-gradient-to-b from-cyan-400/[0.04] to-transparent pointer-events-none" />
 
-            {/* Orb */}
-            <div className="w-24 h-24 rounded-full bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center backdrop-blur-xl shadow-[0_0_40px_rgba(34,211,238,0.15)]">
+              <div className="relative">
 
-              <div className="text-cyan-300 text-4xl">
+                <div className="mx-auto w-16 h-16 rounded-2xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center text-2xl text-cyan-400 group-hover:scale-105 transition-transform">
+                  ↑
+                </div>
 
-                ⬆
+                <h3 className="mt-6 text-xl font-semibold text-white">
+                  Upload a dermatology image
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-400">
+                  JPG, JPEG or PNG
+                </p>
+
+                <div className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-cyan-400 text-slate-950 font-semibold text-sm group-hover:bg-cyan-300 transition">
+                  Run DermaLens
+                  <span>→</span>
+                </div>
+
+                <p className="mt-5 text-xs text-slate-500">
+                  Your image is analyzed for quality degradation — not diagnosed.
+                </p>
 
               </div>
-
             </div>
 
-            <h3 className="text-white text-2xl font-bold mt-8">
+            <input
+              id="dermalens-upload"
+              type="file"
+              accept="image/png,image/jpeg,image/jpg"
+              onChange={handleChange}
+              className="hidden"
+            />
+          </label>
 
-              Drag & Drop Image
-
-            </h3>
-
-            <p className="text-slate-400 mt-4 max-w-md leading-relaxed">
-
-              Supports low-light, blurry, noisy,
-              and compressed dermatology images.
-
-            </p>
-
-            <div className="mt-8 px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold shadow-[0_0_30px_rgba(34,211,238,0.2)]">
-
-              Select Image
-
-            </div>
-
+          {/* TECHNICAL NOTE */}
+          <div className="mt-6 flex flex-col md:flex-row items-center justify-center gap-3 text-xs text-slate-500">
+            <span>Quality indicators</span>
+            <span className="hidden md:block">•</span>
+            <span>Candidate-based enhancement</span>
+            <span className="hidden md:block">•</span>
+            <span>Validation gate</span>
+            <span className="hidden md:block">•</span>
+            <span>Downstream model comparison</span>
           </div>
 
-        </label>
+        </div>
+      </div>
+    </section>
+  );
+}
 
-        {/* INPUT */}
-        <input
-          id="upload"
-          type="file"
-          accept="image/*"
-          onChange={handleChange}
-          className="hidden"
-        />
-
+function InfoCard({ number, title, text }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+      <div className="text-xs font-mono text-cyan-400 mb-3">
+        {number}
       </div>
 
-    </motion.section>
+      <h3 className="text-sm font-semibold text-white">
+        {title}
+      </h3>
+
+      <p className="text-xs text-slate-500 leading-relaxed mt-2">
+        {text}
+      </p>
+    </div>
   );
 }

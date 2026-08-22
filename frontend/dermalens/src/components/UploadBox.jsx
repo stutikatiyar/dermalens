@@ -7,24 +7,9 @@ import ResultSection from "./ResultSection";
 import UploadSection from "./UploadSection";
 import Navbar from "./Navbar";
 
-
-/*
- * Backend URL
- *
- * Local development:
- *   frontend -> 127.0.0.1:5173
- *   backend  -> 127.0.0.1:8000
- *
- * GitHub Codespaces:
- *   frontend -> <codespace>-5173.app.github.dev
- *   backend  -> <codespace>-8000.app.github.dev
- *
- * We automatically select the correct backend URL.
- */
 function getBackendURL() {
   const hostname = window.location.hostname;
 
-  // GitHub Codespaces frontend URL
   if (hostname.includes("-5173.app.github.dev")) {
     return `https://${hostname.replace(
       "-5173.app.github.dev",
@@ -32,159 +17,144 @@ function getBackendURL() {
     )}`;
   }
 
-  // Normal local development
   return "http://127.0.0.1:8000";
 }
 
-
 export default function UploadBox() {
-
   const [loading, setLoading] = useState(false);
 
   const [image, setImage] = useState(null);
-
   const [enhanced, setEnhanced] = useState(null);
 
   const [metrics, setMetrics] = useState(null);
-
   const [confidence, setConfidence] = useState(null);
 
   const [mode, setMode] = useState("");
-
   const [insights, setInsights] = useState([]);
 
-  // NEW: tracks whether the validation gate accepted or rejected the
-  // enhancement. Was previously not read from the backend response at
-  // all, so ResultSection had no way to know and always rendered as if
-  // the enhancement had been accepted -- even when it had actually been
-  // reverted to the original image.
   const [enhancementAccepted, setEnhancementAccepted] = useState(true);
 
+  const [error, setError] = useState("");
 
   async function handleChange(e) {
-
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
 
     if (!file) return;
 
+    setError("");
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png"
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setError("Please upload a JPG, JPEG, or PNG image.");
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      setError("Please upload an image smaller than 15 MB.");
+      return;
+    }
 
     setLoading(true);
 
     setEnhanced(null);
-
     setMetrics(null);
-
     setConfidence(null);
-
     setMode("");
-
     setInsights([]);
-
     setEnhancementAccepted(true);
 
-
-    const formData = new FormData();
-
-    formData.append("file", file);
-
-
-    setImage(URL.createObjectURL(file));
-
+    const previewURL = URL.createObjectURL(file);
+    setImage(previewURL);
 
     try {
-
       const backendURL = getBackendURL();
 
-      console.log("Backend URL:", backendURL);
+      const formData = new FormData();
+      formData.append("file", file);
 
-
-      const res = await fetch(
-        `${backendURL}/upload`,
-        {
-          method: "POST",
-          body: formData
-        }
-      );
-
+      const res = await fetch(`${backendURL}/upload`, {
+        method: "POST",
+        body: formData
+      });
 
       if (!res.ok) {
-
         const errorText = await res.text();
 
         console.error(
-          "Backend error:",
+          "DermaLens backend error:",
           res.status,
           errorText
         );
 
         throw new Error(
-          `Backend returned ${res.status}`
+          `Backend returned HTTP ${res.status}`
         );
       }
 
-
       const data = await res.json();
-      console.log("UPLOAD RESPONSE:", data);
-      console.log("IMAGE EXISTS:", !!data.image);
-      console.log("IMAGE LENGTH:", data.image?.length);
-
-
 
       if (!data.image) {
         throw new Error(
-          "Backend response does not contain an image."
+          "The backend did not return a processed image."
         );
       }
-
 
       setEnhanced(
         `data:image/jpeg;base64,${data.image}`
       );
 
+      setMetrics(data.metrics || null);
 
-      setMetrics(data.metrics);
+      setConfidence(data.confidence || null);
 
-      setConfidence(data.confidence);
-
-      setMode(data.mode);
+      setMode(data.mode || "Not specified");
 
       setInsights(
-        data.interpretation || []
+        Array.isArray(data.interpretation)
+          ? data.interpretation
+          : []
       );
 
-      // NEW: capture the gate's decision. Defaults to true if the field
-      // is somehow missing from an older backend response, so this never
-      // crashes -- it just falls back to the old (pre-gate) display
-      // behavior in that case.
       setEnhancementAccepted(
         data.enhancement_accepted !== undefined
-          ? data.enhancement_accepted
-          : true
+          ? Boolean(data.enhancement_accepted)
+          : data.mode !== "No Enhancement"
       );
 
-
     } catch (err) {
-
       console.error(
-        "Image processing failed:",
+        "DermaLens processing failed:",
         err
       );
 
-      alert(
-        "Failed to process image. Check the browser console and backend."
+      setError(
+        "Unable to process this image. Make sure the FastAPI backend is running and try again."
       );
 
+      setEnhanced(null);
 
     } finally {
-
       setLoading(false);
-
     }
   }
 
+  function resetPipeline() {
+    setImage(null);
+    setEnhanced(null);
+    setMetrics(null);
+    setConfidence(null);
+    setMode("");
+    setInsights([]);
+    setEnhancementAccepted(true);
+    setError("");
+  }
 
   return (
-
     <div className="relative min-h-screen bg-[#020617] overflow-hidden">
 
       <BackgroundGlow />
@@ -193,45 +163,51 @@ export default function UploadBox() {
 
       <HeroSection />
 
+      {error && (
+        <div className="relative z-20 px-6 mb-6">
+          <div className="max-w-3xl mx-auto rounded-xl border border-red-400/20 bg-red-400/[0.05] px-5 py-4 text-sm text-red-300 text-center">
+            {error}
+          </div>
+        </div>
+      )}
 
-      {!loading && !enhanced ? (
-
+      {!loading && !enhanced && (
         <UploadSection
           handleChange={handleChange}
         />
+      )}
 
-      ) : loading ? (
-
-        <div className="relative z-10 px-6 pb-24 -mt-10">
-
+      {loading && (
+        <div className="relative z-10 px-6 pb-24 -mt-4">
           <div className="max-w-4xl mx-auto">
-
             <AIProcessing />
-
           </div>
-
         </div>
-
-      ) : null}
-
-
-      {/* RESULTS */}
+      )}
 
       {!loading && enhanced && (
+        <>
+          <ResultSection
+            image={image}
+            enhanced={enhanced}
+            metrics={metrics}
+            confidence={confidence}
+            mode={mode}
+            insights={insights}
+            enhancementAccepted={enhancementAccepted}
+          />
 
-        <ResultSection
-          image={image}
-          enhanced={enhanced}
-          metrics={metrics}
-          confidence={confidence}
-          mode={mode}
-          insights={insights}
-          enhancementAccepted={enhancementAccepted}
-        />
-
+          <div className="relative z-10 pb-20 text-center">
+            <button
+              onClick={resetPipeline}
+              className="px-6 py-3 rounded-xl border border-white/10 bg-white/[0.03] text-sm text-slate-300 hover:bg-white/[0.06] hover:border-cyan-400/20 transition"
+            >
+              ← Analyze another image
+            </button>
+          </div>
+        </>
       )}
 
     </div>
-
   );
 }

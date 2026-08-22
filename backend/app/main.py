@@ -11,13 +11,15 @@ app = FastAPI()
 # CORS
 # --------------------------------------------------
 
-FRONTEND_ORIGIN = (
-    "https://super-dollop-pjqx9p6w4qv4h65rw-5173.app.github.dev"
-)
+FRONTEND_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://super-dollop-pjqx9p6w4qv4h65rw-5173.app.github.dev",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN],
+    allow_origins=FRONTEND_ORIGINS,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
