@@ -33,6 +33,8 @@ export default function UploadBox() {
   const [insights, setInsights] = useState([]);
 
   const [enhancementAccepted, setEnhancementAccepted] = useState(true);
+  const [degradedImage, setDegradedImage] = useState(null);
+  const [evaluation, setEvaluation] = useState(null);
 
   const [error, setError] = useState("");
 
@@ -67,6 +69,8 @@ export default function UploadBox() {
     setMode("");
     setInsights([]);
     setEnhancementAccepted(true);
+    setDegradedImage(null);
+    setEvaluation(null);
 
     const previewURL = URL.createObjectURL(file);
     setImage(previewURL);
@@ -143,6 +147,43 @@ export default function UploadBox() {
     }
   }
 
+  async function handleEvaluation(originalFile, degradedFile) {
+    setError("");
+    setLoading(true);
+    setImage(URL.createObjectURL(originalFile));
+    setDegradedImage(URL.createObjectURL(degradedFile));
+    setEnhanced(null);
+    setEvaluation(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("original", originalFile);
+      formData.append("degraded", degradedFile);
+
+      const res = await fetch(`${getBackendURL()}/evaluate`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        throw new Error(`Backend returned HTTP ${res.status}: ${await res.text()}`);
+      }
+
+      const data = await res.json();
+      setEnhanced(`data:image/jpeg;base64,${data.enhanced_image}`);
+      setEvaluation(data.evaluation || null);
+      setMode(data.mode || "Not specified");
+      setConfidence(data.confidence || null);
+      setEnhancementAccepted(true);
+    } catch (err) {
+      console.error("DermaLens evaluation failed:", err);
+      setError("Unable to run the reference evaluation. Check that the backend and LPIPS dependencies are running.");
+      setEnhanced(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function resetPipeline() {
     setImage(null);
     setEnhanced(null);
@@ -151,6 +192,8 @@ export default function UploadBox() {
     setMode("");
     setInsights([]);
     setEnhancementAccepted(true);
+    setDegradedImage(null);
+    setEvaluation(null);
     setError("");
   }
 
@@ -174,6 +217,7 @@ export default function UploadBox() {
       {!loading && !enhanced && (
         <UploadSection
           handleChange={handleChange}
+          handleEvaluation={handleEvaluation}
         />
       )}
 
@@ -195,6 +239,8 @@ export default function UploadBox() {
             mode={mode}
             insights={insights}
             enhancementAccepted={enhancementAccepted}
+            degradedImage={degradedImage}
+            evaluation={evaluation}
           />
 
           <div className="relative z-10 pb-20 text-center">

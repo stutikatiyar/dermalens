@@ -1,4 +1,17 @@
-export default function UploadSection({ handleChange }) {
+import { useRef, useState } from "react";
+
+export default function UploadSection({ handleChange, handleEvaluation }) {
+  const originalInput = useRef(null);
+  const degradedInput = useRef(null);
+  const [originalFile, setOriginalFile] = useState(null);
+  const [degradedFile, setDegradedFile] = useState(null);
+
+  function runEvaluation() {
+    if (originalFile && degradedFile) {
+      handleEvaluation(originalFile, degradedFile);
+    }
+  }
+
   return (
     <section className="relative z-10 px-6 pb-24">
       <div className="max-w-6xl mx-auto">
@@ -106,9 +119,71 @@ export default function UploadSection({ handleChange }) {
             <span>Downstream model comparison</span>
           </div>
 
+          <div className="mt-10 rounded-3xl border border-cyan-400/20 bg-slate-950/70 p-6 md:p-8">
+            <div className="text-center">
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan-400 font-semibold">
+                Reference experiment
+              </p>
+              <h3 className="mt-2 text-xl font-semibold text-white">
+                Compare restoration against a clean reference
+              </h3>
+              <p className="mt-2 text-sm text-slate-400 max-w-2xl mx-auto">
+                Reference-based evaluation compares both the degraded input and DermaLens output against the original clean image.
+              </p>
+            </div>
+
+            <div className="mt-6 grid md:grid-cols-2 gap-4">
+              <FilePicker
+                label="Original clean image"
+                file={originalFile}
+                inputRef={originalInput}
+                onChange={(event) => setOriginalFile(event.target.files?.[0] || null)}
+              />
+              <FilePicker
+                label="Degraded image"
+                file={degradedFile}
+                inputRef={degradedInput}
+                onChange={(event) => setDegradedFile(event.target.files?.[0] || null)}
+              />
+            </div>
+
+            <button
+              type="button"
+              disabled={!originalFile || !degradedFile}
+              onClick={runEvaluation}
+              className="mt-6 w-full rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Run DermaLens Evaluation
+            </button>
+
+            <p className="mt-4 text-center text-xs text-slate-500">
+              PSNR and SSIM should increase; LPIPS should decrease. These are image-quality metrics, not diagnostic accuracy metrics.
+            </p>
+          </div>
+
         </div>
       </div>
     </section>
+  );
+}
+
+function FilePicker({ label, file, inputRef, onChange }) {
+  return (
+    <button
+      type="button"
+      onClick={() => inputRef.current?.click()}
+      className="rounded-xl border border-white/10 bg-white/[0.025] p-5 text-left hover:border-cyan-400/30 transition"
+    >
+      <span className="block text-xs uppercase tracking-wider text-slate-500">{label}</span>
+      <span className="mt-2 block truncate text-sm text-white">{file ? file.name : "Choose JPG, JPEG or PNG"}</span>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg"
+        onChange={onChange}
+        className="hidden"
+      />
+    </button>
   );
 }
 

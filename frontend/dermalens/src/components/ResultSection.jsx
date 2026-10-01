@@ -7,7 +7,9 @@ export default function ResultSection({
   confidence,
   mode,
   insights,
-  enhancementAccepted
+  enhancementAccepted,
+  degradedImage,
+  evaluation
 }) {
   const [slider, setSlider] = useState(50);
   const [zoom, setZoom] = useState(false);
@@ -206,6 +208,15 @@ export default function ResultSection({
         </div>
 
         {/* QUALITY ANALYSIS */}
+        {evaluation && degradedImage && (
+          <ReferenceEvaluation
+            evaluation={evaluation}
+            originalImage={image}
+            degradedImage={degradedImage}
+            enhancedImage={enhanced}
+          />
+        )}
+
         <div className="mt-8">
 
           <SectionHeader
@@ -477,6 +488,62 @@ export default function ResultSection({
       </div>
     </section>
   );
+}
+
+function ReferenceEvaluation({ evaluation, originalImage, degradedImage, enhancedImage }) {
+  const psnr = evaluation.psnr || {};
+  const ssim = evaluation.ssim || {};
+  const lpips = evaluation.lpips || {};
+  const number = (value, digits) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
+  const signed = (value, digits) => {
+    if (!Number.isFinite(Number(value))) return "—";
+    const n = Number(value);
+    return `${n >= 0 ? "+" : ""}${n.toFixed(digits)}`;
+  };
+
+  return (
+    <div className="mt-8 rounded-3xl border border-cyan-400/20 bg-cyan-400/[0.035] p-6 md:p-8">
+      <SectionHeader
+        eyebrow="REFERENCE EVALUATION"
+        title="Reference-based image quality evaluation"
+        description="Both the degraded input and DermaLens output are compared against the original clean image."
+      />
+
+      <div className="mt-5 overflow-x-auto">
+        <table className="w-full min-w-[520px] text-left text-sm">
+          <thead className="text-xs uppercase tracking-wider text-slate-500">
+            <tr><th className="py-3">Metric</th><th>Degraded</th><th>DermaLens</th><th>Change</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10 text-slate-200">
+            <MetricRow label="PSNR (dB)" degraded={number(psnr.degraded_vs_original, 3)} enhanced={number(psnr.enhanced_vs_original, 3)} change={signed(psnr.change_db, 3)} />
+            <MetricRow label="SSIM" degraded={number(ssim.degraded_vs_original, 4)} enhanced={number(ssim.enhanced_vs_original, 4)} change={signed(ssim.change, 4)} />
+            <MetricRow label="LPIPS" degraded={number(lpips.degraded_vs_original, 4)} enhanced={number(lpips.enhanced_vs_original, 4)} change={signed(lpips.change, 4)} />
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-6 grid md:grid-cols-3 gap-3">
+        <ReferenceImage label="Original" source={originalImage} />
+        <ReferenceImage label="Degraded" source={degradedImage} />
+        <ReferenceImage label="DermaLens output" source={enhancedImage} />
+      </div>
+
+      <div className="mt-6 grid md:grid-cols-3 gap-3 text-xs text-slate-400 leading-relaxed">
+        <p><strong className="text-white">PSNR:</strong> Pixel-level reconstruction fidelity. Higher is better.</p>
+        <p><strong className="text-white">SSIM:</strong> Structural similarity to the reference. Higher is better.</p>
+        <p><strong className="text-white">LPIPS:</strong> Learned perceptual similarity. Lower is better.</p>
+      </div>
+      <p className="mt-5 text-xs text-amber-200/80">These are image-quality metrics, not diagnostic accuracy metrics.</p>
+    </div>
+  );
+}
+
+function MetricRow({ label, degraded, enhanced, change }) {
+  return <tr><td className="py-4 font-semibold text-white">{label}</td><td>{degraded}</td><td className="font-semibold text-cyan-300">{enhanced}</td><td className="text-cyan-300">{change}</td></tr>;
+}
+
+function ReferenceImage({ label, source }) {
+  return <div className="overflow-hidden rounded-xl border border-white/10 bg-black"><p className="px-3 py-2 text-xs font-semibold text-white">{label}</p><img src={source} alt={label} className="h-48 w-full object-contain" /></div>;
 }
 
 function SectionHeader({ eyebrow, title, description }) {

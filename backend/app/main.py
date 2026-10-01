@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes import upload
+from app.routes import evaluate
 
 
 app = FastAPI()
@@ -13,6 +14,7 @@ app = FastAPI()
 
 FRONTEND_ORIGINS = [
     "http://localhost:5173",
+    "http://localhost:5174",
     "http://127.0.0.1:5173",
     "https://super-dollop-pjqx9p6w4qv4h65rw-5173.app.github.dev",
 ]
@@ -31,3 +33,4 @@ app.add_middleware(
 # --------------------------------------------------
 
 app.include_router(upload.router)
+app.include_router(evaluate.router)

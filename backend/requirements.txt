@@ -20,3 +20,4 @@ torch
 torchvision
 tqdm
 scikit-image
+lpips==0.1.4
